@@ -22,17 +22,53 @@ public:
     CircularBuffer(int capacity, const value_type &elem);
 
     // Доступ по индексу. Не проверяют правильность индекса.
-    value_type &operator[](int i);
-    const value_type &operator[](int i) const; //const?
+    value_type &operator[](int i)
+    {
+        return data[i];
+    };
+    const value_type &operator[](int i) const
+    {
+        return const_cast<const value_type&>(data[i]);
+    };
 
     // Доступ по индексу. Методы бросают исключение в случае неверного индекса.
-    value_type &at(int i);
-    const value_type &at(int i) const;
+    value_type &at(int i)
+    {
+        if((head + i < 0) || (head + i > cap))
+            throw std::runtime_error("Index_err");
+        if(i < 0)
+            i = head - i;
+        else 
+            i = head + i;
+        return data[i];
+    };
+    const value_type &at(int i) const
+    {
+        if((head + i < 0) || (head + i > cap))
+            throw std::runtime_error("Index_err");
+        if(i < 0)
+            i = head - i;
+        else 
+            i = head + i;
+        return const_cast<const value_type&>(data[i]);
+    };
 
-    value_type &front(); // Ссылка на первый элемент.
-    value_type &back();  // Ссылка на последний элемент.
-    const value_type &front() const;
-    const value_type &back() const;
+    value_type &front()
+    {
+        return data[head];
+    }; // Ссылка на первый элемент.
+    value_type &back()
+    {
+        return data[tail];
+    };  // Ссылка на последний элемент.
+    const value_type &front() const
+    {
+        return const_cast<const value_type&>(data[head]);
+    };
+    const value_type &back() const
+    {
+        return const_cast<const value_type&>(data[tail]);
+    };
 
     // Линеаризация - сдвинуть кольцевой буфер так, что его первый элемент
     // переместится в начало аллоцированной памяти. Возвращает указатель
@@ -122,7 +158,7 @@ CircularBuffer<value_type>::CircularBuffer(int capacity, const value_type &elem)
         data[i] = elem;
     
     head = 0;
-    tail = capacity;
+    tail = capacity - 1;
     cap = capacity;
     sz = capacity;
 }
@@ -162,11 +198,20 @@ int CircularBuffer<value_type>::capacity() const
 template<class value_type>
 void CircularBuffer<value_type>::push_back(const value_type &item)
 {
-    if(head >= cap)
-        head %= cap;
-    data[head] = item;
-    sz++;
-    head++;
+    if(tail >= cap)
+        tail %= cap;
+    data[tail] = item;
+    tail++;
+    if(sz == cap)
+        continue;
+    else
+        sz++;
+}
+
+template<class value_type>
+void push_front(const value_type &item)
+{
+
 }
 
 
