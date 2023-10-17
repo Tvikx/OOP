@@ -62,8 +62,18 @@ public:
 	value_type& at(int i);
 	const value_type& at(int i) const;
 
-	value_type& front(); 
-	value_type& back();  
+	value_type& front()
+	{
+		return buffer[head];
+	} 
+	value_type& back()
+	{
+		if(this->full() && tail == 0)
+			return buffer[cap - 1];
+		if(tail == 0)
+			return buffer[0];
+		return buffer[tail - 1];
+	} 
 	const value_type& front() const;
 	const value_type& back() const;
 
@@ -77,10 +87,16 @@ public:
 	int size() const;
 	bool empty() const;
 
-	bool full() const;
+	bool full() const
+	{
+		if(cap == sz)
+			return true;
+		else 
+			return false;
+	}
 
 	int reserve() const;
-	//������� ������
+
 	int capacity() const;
 
 	void set_capacity(int new_capacity);
@@ -107,6 +123,13 @@ public:
 
 	void push_back(const value_type& item = value_type())
 	{
+		// if(tail == head)
+		// {
+		// 	if(head == cap - 1)
+		// 		head = 0;
+		// 	else
+		// 		head++;
+		// }
 		if(tail == cap - 1)
 		{
 			buffer[tail] = item;
@@ -125,6 +148,13 @@ public:
 
 	void push_front(const value_type& item = value_type())
 	{
+		// if(head == tail)
+		// {
+		// 	if(tail == 0)
+		// 		tail = cap - 1;
+		// 	else
+		// 		tail--;
+		// }
 		if(head == 0)
 		{
        		head = cap - 1;
