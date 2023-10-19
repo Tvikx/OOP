@@ -19,11 +19,17 @@ public:
 	}
 	~CircularBuffer()
 	{
-		free(buffer);
+		delete[] buffer;
 	}
 	CircularBuffer(const CircularBuffer& cb)
 	{
-		this = cb;
+		buffer = new value_type[cb.capacity()];
+		for (int i = 0; i < cb.capacity(); i++)
+			buffer[i] = cb.buffer[i];
+		head = cb.head;
+		tail = cb.tail;
+		cap = cb.cap;
+		sz = cb.sz;
 	}
 	//Конструирует буфер заданной ёмкости.
 	explicit CircularBuffer(int capacity)
@@ -43,7 +49,7 @@ public:
 			std::cerr << "invalid buffer capacity" << std::endl;
 		buffer = new value_type[capacity];
 		head = 0;
-		tail = capacity - 1;
+		tail = capacity;
 		sz = capacity;
 		cap = capacity;
 		for (int i = 0; i < capacity; i++)
@@ -157,19 +163,47 @@ public:
 		return cap;
 	}
 
-	void set_capacity(int new_capacity);
+	void set_capacity(int new_capacity)
+	{
+		if (new_capacity == cap)
+			return void();
+
+		value_type* temp = new value_type[new_capacity];
+		buffer = this->linearize();
+
+		if (new_capacity > sz)
+		{
+			for (int i = 0; i < sz; i++)
+				temp[i] = buffer[i];
+			tail = sz;
+		}
+		else
+		{
+			for (int i = 0; i < new_capacity; i++)
+				temp[i] = buffer[i];
+			tail = new_capacity;
+			sz = new_capacity;
+		}
+
+		delete[] buffer;
+		buffer = temp;
+		cap = new_capacity;
+	}
 	//Изменяет размер буфера.
 	//В случае расширения, новые элементы заполняются элементом item.
-	void resize(int new_size, const value_type& item = value_type());
-	//Оператор присваивания.
-	CircularBuffer& operator=(const CircularBuffer& cb)
+	void resize(int new_size, const value_type& item = value_type())
 	{
-		buffer = cb.buffer;
-		head = cb.head;
-		tail = cb.tail;
-		sz = cb.sz;
-		cap = cb.cap;
+		this->set_capacity(new_size);
+		if (new_size > sz)
+		{
+			for (int i = sz; i < new_size; i++)
+				buffer[i] = item;
+			tail = new_size;
+			sz = new_size;
+		}
 	}
+	//Оператор присваивания.
+	CircularBuffer& operator=(const CircularBuffer& cb);
 	//Обменивает содержимое буфера с буфером cb.
 	void swap(CircularBuffer& cb)
 	{
