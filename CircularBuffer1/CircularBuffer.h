@@ -8,14 +8,34 @@ class CircularBuffer {
 	int tail;
 	int sz;
 	int cap;
+
+	static int mod(int a, int b)
+	{
+		a = a % b;
+		if (a >= 0)
+			return a;
+		else
+			return a + b;
+	}
+
+	void left_shift()
+	{
+		value_type tmp = buffer[0];
+		for (int i = 0; i < cap - 1; i++)
+			buffer[i] = buffer[i + 1];
+		buffer[cap - 1] = tmp;
+		head = mod(head - 1, cap);
+		tail = mod(tail - 1, cap);
+	}
+
 public:
 	CircularBuffer()
 	{
 		buffer = nullptr;
-		head = -1;
-		tail = -1;
+		head = 0;
+		tail = 0;
 		sz = 0;
-		cap = -1;
+		cap = 0;
 	}
 	~CircularBuffer()
 	{
@@ -31,7 +51,7 @@ public:
 		cap = cb.cap;
 		sz = cb.sz;
 	}
-	//Конструирует буфер заданной ёмкости.
+
 	explicit CircularBuffer(int capacity)
 	{
 		if (capacity < 0)
@@ -42,7 +62,7 @@ public:
 		sz = 0;
 		cap = capacity;
 	}
-	//Конструирует буфер заданной ёмкости, целиком заполняет его элементом elem.
+
 	CircularBuffer(int capacity, const value_type& elem)
 	{
 		if (capacity < 0)
@@ -56,7 +76,6 @@ public:
 			buffer[i] = elem;
 	}
 
-	//Доступ по индексу. Не проверяют правильность индекса.
 	value_type& operator[](int i)
 	{
 		return buffer[mod(head + i, cap)];
@@ -66,7 +85,7 @@ public:
 		return const_cast<const value_type&>(buffer[mod(head + i, cap)]);
 	}
 
-	//Доступ по индексу. Методы бросают исключение в случае неверного индекса.
+
 	value_type& at(int i)
 	{
 		i = mod(head + i, cap);
@@ -76,13 +95,13 @@ public:
 	}
 	const value_type& at(int i) const;
 
-	value_type& front() //Ссылка на первый элемент.
+	value_type& front()
 	{
 		if (this->empty())
 			throw "can't get front element because buffer is empty\n";
 		return buffer[head];
 	}
-	value_type& back()  //Ссылка на последний элемент.
+	value_type& back()
 	{
 		if (this->empty())
 			throw "can't get back element because buffer is empty\n";
@@ -101,9 +120,7 @@ public:
 		const_cast<const value_type&>(buffer[mod(tail - 1, cap)]);
 	}
 
-	//Линеаризация - сдвинуть кольцевой буфер так, что его первый элемент
-	//переместится в начало аллоцированной памяти. Возвращает указатель 
-	//на первый элемент.
+
 	value_type* linearize()
 	{
 		while (head != 0)
@@ -111,7 +128,7 @@ public:
 
 		return buffer;
 	}
-	//Проверяет, является ли буфер линеаризованным.
+
 	bool is_linearized() const
 	{
 		if (head == -1 || tail == -1)
@@ -122,8 +139,7 @@ public:
 			return false;
 	}
 
-	//Сдвигает буфер так, что по нулевому индексу окажется элемент 
-	//с индексом new_begin.
+
 	void rotate(int new_begin)
 	{
 		value_type check = this->at(new_begin);
@@ -132,7 +148,7 @@ public:
 		head = mod(head + new_begin, cap);
 		tail = mod(tail + new_begin, cap);
 	}
-	//Количество элементов, хранящихся в буфере.
+
 	int size() const
 	{
 		return sz;
@@ -144,7 +160,7 @@ public:
 		else
 			return false;
 	}
-	//true, если size() == capacity().
+
 	bool full() const
 	{
 		if (sz == cap)
@@ -152,12 +168,12 @@ public:
 		else
 			return false;
 	}
-	//Количество свободных ячеек в буфере.
+
 	int reserve() const
 	{
 		return cap - sz;
 	}
-	//ёмкость буфера
+
 	int capacity() const
 	{
 		return cap;
@@ -166,22 +182,20 @@ public:
 	void set_capacity(int new_capacity)
 	{
 		if (new_capacity == cap)
-			return void();
+			return;
 
 		value_type* temp = new value_type[new_capacity];
-		buffer = this->linearize();
+		buffer = linearize();
 
 		if (new_capacity > sz)
 		{
-			for (int i = 0; i < sz; i++)
-				temp[i] = buffer[i];
+			memcpy(temp, buffer,sizeof(value_type)*sz);
 			tail = sz;
 		}
 		else
 		{
-			for (int i = 0; i < new_capacity; i++)
-				temp[i] = buffer[i];
-			tail = new_capacity;
+			memcpy(temp, buffer, sizeof(value_type) * sz);
+			tail = 0;
 			sz = new_capacity;
 		}
 
@@ -189,8 +203,7 @@ public:
 		buffer = temp;
 		cap = new_capacity;
 	}
-	//Изменяет размер буфера.
-	//В случае расширения, новые элементы заполняются элементом item.
+
 	void resize(int new_size, const value_type& item = value_type())
 	{
 		this->set_capacity(new_size);
@@ -198,13 +211,24 @@ public:
 		{
 			for (int i = sz; i < new_size; i++)
 				buffer[i] = item;
-			tail = new_size;
+			tail = 0;
 			sz = new_size;
 		}
 	}
-	//Оператор присваивания.
-	CircularBuffer& operator=(const CircularBuffer& cb);
-	//Обменивает содержимое буфера с буфером cb.
+
+	CircularBuffer& operator=(const CircularBuffer& cb)
+	{
+		this->set_capacity(cb.capacity());
+		head = cb.head;
+		tail = cb.tail;
+		sz = cb.sz;
+
+		for (int i = 0; i < cb.capacity(); i++)
+			buffer[i] = cb.buffer[i];
+
+		return *this;
+	}
+
 	void swap(CircularBuffer& cb)
 	{
 		CircularBuffer temp = this;
@@ -212,9 +236,6 @@ public:
 		cb = temp;
 	}
 
-	//Добавляет элемент в конец буфера. 
-	//Если текущий размер буфера равен его ёмкости, то переписывается
-	//первый элемент буфера (т.е., буфер закольцован). 
 	void push_back(const value_type& item = value_type())
 	{
 		if (head == -1 || tail == -1)
@@ -229,8 +250,7 @@ public:
 		if (this->reserve() != 0)
 			sz++;
 	}
-	//Добавляет новый элемент перед первым элементом буфера. 
-	//Аналогично push_back, может переписать последний элемент буфера.
+
 	void push_front(const value_type& item = value_type())
 	{
 		if (head == -1 || tail == -1)
@@ -245,7 +265,7 @@ public:
 		if (this->reserve() != 0)
 			sz++;
 	}
-	//удаляет последний элемент буфера.
+
 	void pop_back()
 	{
 		if (this->empty())
@@ -253,7 +273,7 @@ public:
 		tail = mod(tail - 1, cap);
 		sz -= 1;
 	}
-	//удаляет первый элемент буфера.
+
 	void pop_front()
 	{
 		if (this->empty())
@@ -262,34 +282,60 @@ public:
 		sz -= 1;
 	}
 
-	//Вставляет элемент item по индексу pos. Ёмкость буфера остается неизменной.
-	void insert(int pos, const value_type& item = value_type());
-	//Удаляет элементы из буфера в интервале [first, last).
-	void erase(int first, int last);
-	//Очищает буфер.
-	void clear();
 
-	int mod(int a, int b)
+	void insert(int pos, const value_type& item = value_type())
 	{
-		a = a % b;
-		if (a >= 0)
-			return a;
-		else
-			return a + b;
+		this->at(pos) = item;
 	}
 
-	void left_shift()
+	void erase(int first, int last)
 	{
-		value_type tmp = buffer[0];
-		for (int i = 0; i < cap - 1; i++)
-			buffer[i] = buffer[i + 1];
-		buffer[cap - 1] = tmp;
-		head = mod(head - 1, cap);
-		tail = mod(tail - 1, cap);
+		if (first > last)
+			throw "first must be less than last";
+		first = mod(first, sz);
+		last = mod(last, sz);
+		buffer = this->linearize();
+		int newSize = sz - (last - first + 1);
+
+		value_type* tmp = new value_type[cap];
+		int j = 0;
+		for (int i = 0; i < sz; i++)
+		{
+			if (!(i >= first && i <= last)) {
+				tmp[j] = buffer[i];
+				j++;
+			}
+		}
+		sz = newSize;
+		tail = newSize;
+		delete buffer;
+		buffer = tmp;
 	}
+
+	void clear()
+	{
+		this->erase(0, sz - 1);
+	}
+
 };
 
 template<typename value_type>
-bool operator==(const CircularBuffer<value_type>& a, const CircularBuffer<value_type>& b);
+bool operator==(const CircularBuffer<value_type>& a, const CircularBuffer<value_type>& b)
+{
+	if (a.size() != b.size())
+		return false;
+	for (int i = 0; i < a.size(); i++)
+	{
+		if (a[i] != b[i])
+			return false;
+	}
+	return true;
+}
 template<typename value_type>
-bool operator!=(const CircularBuffer<value_type>& a, const CircularBuffer<value_type>& b);
+bool operator!=(const CircularBuffer<value_type>& a, const CircularBuffer<value_type>& b)
+{
+	if (a == b)
+		return false;
+	else
+		return true;
+}
